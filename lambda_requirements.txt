@@ -1,0 +1,32 @@
+# AWS SDK
+boto3>=1.26.0
+botocore>=1.29.0
+
+# Slack SDK (for Slack API interactions)
+slack-sdk>=3.21.0
+
+# PDF Generation
+Jinja2>=3.1.0
+WeasyPrint>=60.0
+
+# HTTP requests (for external API calls)
+requests>=2.28.0
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Date/time handling
+python-dateutil>=2.8.0
+
+# JSON handling
+jsonschema>=4.17.0
+
+# Logging and monitoring
+structlog>=23.0.0
+
+# Security (for signature verification)
+cryptography>=41.0.0
+
+# Type hints
+typing-extensions>=4.5.0 
