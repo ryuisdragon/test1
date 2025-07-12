@@ -17,8 +17,6 @@ def get_logger(request_id: str = "-") -> logging.LoggerAdapter:
 
 # Initialize AWS clients
 rds_client = boto3.client('rds-data')
-s3_client = boto3.client('s3')
-lambda_client = boto3.client('lambda')
 
 class DatabaseManager:
     """Handles RDS database operations for case management"""

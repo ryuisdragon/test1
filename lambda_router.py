@@ -2,9 +2,8 @@ import json
 import logging
 import hmac
 import hashlib
-import base64
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import boto3
 from botocore.exceptions import ClientError
 
@@ -20,7 +19,6 @@ def get_logger(request_id: str = "-") -> logging.LoggerAdapter:
 
 # Initialize AWS clients
 bedrock_runtime = boto3.client('bedrock-runtime')
-slack_client = boto3.client('lambda')  # For Slack API calls
 
 class SlackSignatureVerifier:
     """Handles Slack signature verification for security"""
