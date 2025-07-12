@@ -236,6 +236,11 @@ python -m pytest tests/integration/ -v
 python tests/load_test.py
 ```
 
+### Continuous Integration
+The repository includes a GitHub Actions workflow (`python-tests.yml`) that
+installs dependencies and runs `pytest` on every push and pull request. This
+ensures all unit tests pass before deployment.
+
 ## Contributing
 
 1. Follow PEP 8 style guidelines
