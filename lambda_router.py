@@ -8,9 +8,15 @@ from typing import Dict, Any, Optional
 import boto3
 from botocore.exceptions import ClientError
 
-# Configure logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+# Configure logging with unified format
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s [request_id=%(request_id)s]",
+)
+logger = logging.getLogger(__name__)
+
+def get_logger(request_id: str = "-") -> logging.LoggerAdapter:
+    return logging.LoggerAdapter(logger, {"request_id": request_id})
 
 # Initialize AWS clients
 bedrock_runtime = boto3.client('bedrock-runtime')
@@ -490,6 +496,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             "body": "Success response"
         }
     """
+    request_id = getattr(context, 'aws_request_id', '-')
+    log = get_logger(request_id)
     try:
         # Initialize components
         verifier = SlackSignatureVerifier(os.environ['SLACK_SIGNING_SECRET'])
@@ -506,7 +514,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         headers = event.get('headers', {})
         # Verify Slack signature
         if not verifier.verify_signature(body, headers):
-            logger.error("Invalid Slack signature")
+            log.error("Invalid Slack signature")
             return {'statusCode': 401, 'body': json.dumps({'error': 'Unauthorized'})}
         # Parse Slack event
         slack_event = json.loads(body)
@@ -559,7 +567,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             "blocks": blocks
         }
         # TODO: Implement Slack message sending
-        logger.info(f"Generated response for thread: {structured_payload['thread_ts']}")
+        log.info(f"Generated response for thread: {structured_payload['thread_ts']}")
         return {
             'statusCode': 200,
             'body': json.dumps({
@@ -568,5 +576,5 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             })
         }
     except Exception as e:
-        logger.error(f"Lambda Router failed: {str(e)}")
-        return {'statusCode': 500, 'body': json.dumps({'error': 'Internal server error'})} 
+        log.error(f"Lambda Router failed: {str(e)}")
+        return {'statusCode': 500, 'body': json.dumps({'error': 'Internal server error'})}

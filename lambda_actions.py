@@ -5,9 +5,15 @@ from typing import Dict, Any, Optional
 from botocore.exceptions import ClientError
 import os
 
-# Configure logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+# Configure logging with unified format
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s [request_id=%(request_id)s]",
+)
+logger = logging.getLogger(__name__)
+
+def get_logger(request_id: str = "-") -> logging.LoggerAdapter:
+    return logging.LoggerAdapter(logger, {"request_id": request_id})
 
 # Initialize AWS clients
 rds_client = boto3.client('rds-data')
@@ -57,11 +63,11 @@ class DatabaseManager:
                 parameters=parameters
             )
             
-            logger.info(f"Case {case_id} status updated to {status}")
+            log.info(f"Case {case_id} status updated to {status}")
             return True
             
         except ClientError as e:
-            logger.error(f"Database update failed: {str(e)}")
+            log.error(f"Database update failed: {str(e)}")
             return False
     
     def get_case_data(self, case_id: str) -> Optional[Dict[str, Any]]:
@@ -110,7 +116,7 @@ class DatabaseManager:
             return None
             
         except ClientError as e:
-            logger.error(f"Database query failed: {str(e)}")
+            log.error(f"Database query failed: {str(e)}")
             return None
     
     def save_case_data(self, case_data: Dict[str, Any]) -> bool:
@@ -152,11 +158,11 @@ class DatabaseManager:
                 parameters=parameters
             )
             
-            logger.info(f"Case {case_data['case_id']} data saved successfully")
+            log.info(f"Case {case_data['case_id']} data saved successfully")
             return True
             
         except ClientError as e:
-            logger.error(f"Database save failed: {str(e)}")
+            log.error(f"Database save failed: {str(e)}")
             return False
 
 class SlackInteractionHandler:
@@ -197,11 +203,11 @@ class SlackInteractionHandler:
             
             # TODO: Implement Slack API call to open modal
             # This would typically use the Slack Web API
-            logger.info(f"Modal opened for case: {case_data['case_id']}")
+            log.info(f"Modal opened for case: {case_data['case_id']}")
             return True
             
         except Exception as e:
-            logger.error(f"Modal opening failed: {str(e)}")
+            log.error(f"Modal opening failed: {str(e)}")
             return False
     
     def _build_modal_blocks(self, case_data: Dict[str, Any]) -> list:
@@ -286,11 +292,11 @@ class SlackInteractionHandler:
             }
             
             # TODO: Implement Slack API call to send message
-            logger.info(f"Confirmation message sent for action: {action}")
+            log.info(f"Confirmation message sent for action: {action}")
             return True
             
         except Exception as e:
-            logger.error(f"Confirmation message failed: {str(e)}")
+            log.error(f"Confirmation message failed: {str(e)}")
             return False
 
 class BriefGenerator:
@@ -329,7 +335,7 @@ class BriefGenerator:
             }
             
         except Exception as e:
-            logger.error(f"Planner brief generation failed: {str(e)}")
+            log.error(f"Planner brief generation failed: {str(e)}")
             raise
     
     def generate_manager_brief(self, case_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -361,7 +367,7 @@ class BriefGenerator:
             }
             
         except Exception as e:
-            logger.error(f"Manager brief generation failed: {str(e)}")
+            log.error(f"Manager brief generation failed: {str(e)}")
             raise
     
     def _extract_actionable_fields(self, case_data: Dict[str, Any]) -> list:
@@ -448,11 +454,11 @@ class PDFGenerator:
             # Placeholder for PDF generation
             pdf_url = f"https://{self.s3_bucket}.s3.amazonaws.com/{s3_key}"
             
-            logger.info(f"PDF generated: {pdf_url}")
+            log.info(f"PDF generated: {pdf_url}")
             return pdf_url
             
         except Exception as e:
-            logger.error(f"PDF generation failed: {str(e)}")
+            log.error(f"PDF generation failed: {str(e)}")
             raise
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -471,6 +477,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             "body": "Success response"
         }
     """
+    request_id = getattr(context, 'aws_request_id', '-')
+    log = get_logger(request_id)
     try:
         # Initialize components
         db_manager = DatabaseManager(
@@ -495,7 +503,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Extract case data from message context
         case_id = payload.get('message', {}).get('blocks', [{}])[0].get('block_id', '')
         
-        logger.info(f"Processing action: {action_id} for case: {case_id}")
+        log.info(f"Processing action: {action_id} for case: {case_id}")
         
         # Handle different action types
         if action_id == 'confirm_correct':
@@ -532,7 +540,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 )
                 
                 # TODO: Send briefs to respective Slack channels
-                logger.info(f"Briefs generated and PDFs created")
+                log.info(f"Briefs generated and PDFs created")
                 
                 return {'statusCode': 200, 'body': 'Briefs generated'}
         
@@ -543,7 +551,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             if case_data:
                 # Save user_id for reminder (could be a new column or a reminders table)
                 # For now, just log and acknowledge
-                logger.info(f"User {user_id} requested to complete later for case {case_id}")
+                log.info(f"User {user_id} requested to complete later for case {case_id}")
                 # Optionally, schedule a DM reminder using EventBridge or Step Functions
                 # TODO: Implement scheduling logic for DM reminder
                 slack_handler.send_confirmation_message(channel_id, message_ts, 'You will be reminded to complete this case later.')
@@ -561,13 +569,13 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     return {'statusCode': 200, 'body': 'Pre-filled modal opened'}
         
         else:
-            logger.warning(f"Unknown action_id: {action_id}")
+            log.warning(f"Unknown action_id: {action_id}")
             return {'statusCode': 400, 'body': 'Unknown action'}
         
         return {'statusCode': 200, 'body': 'Action processed'}
         
     except Exception as e:
-        logger.error(f"Lambda Actions failed: {str(e)}")
+        log.error(f"Lambda Actions failed: {str(e)}")
         return {
             'statusCode': 500,
             'body': json.dumps({'error': 'Internal server error'})
