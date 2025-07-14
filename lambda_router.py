@@ -17,8 +17,6 @@ logger = logging.getLogger(__name__)
 def get_logger(request_id: str = "-") -> logging.LoggerAdapter:
     return logging.LoggerAdapter(logger, {"request_id": request_id})
 
-# Initialize AWS clients
-bedrock_runtime = boto3.client('bedrock-runtime')
 
 class SlackSignatureVerifier:
     """Handles Slack signature verification for security"""
@@ -141,9 +139,10 @@ class MessageTransformer:
 
 class BedrockAgentInvoker:
     """Handles Bedrock Agent invocation and response processing"""
-    
+
     def __init__(self, agent_id: str):
         self.agent_id = agent_id
+        self.bedrock_runtime = boto3.client('bedrock-runtime')
     
     def invoke_agent(self, structured_payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -168,7 +167,7 @@ class BedrockAgentInvoker:
             }
             
             # Invoke Bedrock Agent
-            response = bedrock_runtime.invoke_agent(
+            response = self.bedrock_runtime.invoke_agent(
                 agentId=self.agent_id,
                 input=json.dumps(agent_input),
                 contentType='application/json'
