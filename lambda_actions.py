@@ -15,8 +15,6 @@ logger = logging.getLogger(__name__)
 def get_logger(request_id: str = "-") -> logging.LoggerAdapter:
     return logging.LoggerAdapter(logger, {"request_id": request_id})
 
-# Initialize AWS clients
-rds_client = boto3.client('rds-data')
 
 class DatabaseManager:
     """Handles RDS database operations for case management"""
@@ -25,6 +23,7 @@ class DatabaseManager:
         self.cluster_arn = cluster_arn
         self.secret_arn = secret_arn
         self.database_name = database_name
+        self.rds_client = boto3.client('rds-data')
     
     def update_case_status(self, case_id: str, status: str, user_id: str) -> bool:
         """
@@ -53,7 +52,7 @@ class DatabaseManager:
                 {'name': 'case_id', 'value': {'stringValue': case_id}}
             ]
             
-            response = rds_client.execute_statement(
+            response = self.rds_client.execute_statement(
                 resourceArn=self.cluster_arn,
                 secretArn=self.secret_arn,
                 database=self.database_name,
@@ -90,7 +89,7 @@ class DatabaseManager:
                 {'name': 'case_id', 'value': {'stringValue': case_id}}
             ]
             
-            response = rds_client.execute_statement(
+            response = self.rds_client.execute_statement(
                 resourceArn=self.cluster_arn,
                 secretArn=self.secret_arn,
                 database=self.database_name,
@@ -148,7 +147,7 @@ class DatabaseManager:
                 {'name': 'missing_fields', 'value': {'stringValue': json.dumps(case_data['missing_fields'])}}
             ]
             
-            response = rds_client.execute_statement(
+            response = self.rds_client.execute_statement(
                 resourceArn=self.cluster_arn,
                 secretArn=self.secret_arn,
                 database=self.database_name,
