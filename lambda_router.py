@@ -3,7 +3,7 @@ import logging
 import hmac
 import hashlib
 import os
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import boto3
 from botocore.exceptions import ClientError
 
@@ -108,34 +108,39 @@ class MessageTransformer:
             raise
     
     def _extract_client_id(self, text: str) -> str:
-        """
-        Extract client ID from message text
-        Placeholder for business logic to identify client references
-        
-        Args:
-            text: Message text
-            
-        Returns:
-            str: Extracted client ID
-        """
-        # TODO: Implement client ID extraction logic
-        # This could use regex patterns, NLP, or database lookups
+        """Attempt to extract a client identifier from a Slack message."""
+
+        client_name_nlp = self._extract_client_id_with_nlp(text)
+        if client_name_nlp:
+            return client_name_nlp
+
+        client_name_regex = self._extract_client_id_with_regex(text)
+        if client_name_regex:
+            return client_name_regex
+
+        logger.warning("All extraction methods failed, using fallback.")
+        return f"client_{hash(text) % 10000}"
+
+    def _extract_client_id_with_regex(self, text: str) -> Optional[str]:
+        """Extract a client ID using simple regex patterns."""
         import re
-        
-        # Placeholder: Look for patterns like "Client: ABC Corp" or "@client"
+
         client_patterns = [
             r'client[:\s]+([A-Za-z0-9\s]+)',
             r'@([A-Za-z0-9]+)',
             r'#([A-Za-z0-9]+)'
         ]
-        
+
         for pattern in client_patterns:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
                 return match.group(1).strip()
-        
-        # Fallback: generate ID based on timestamp and user
-        return f"client_{hash(text) % 10000}"
+        return None
+
+    def _extract_client_id_with_nlp(self, text: str) -> Optional[str]:
+        """Placeholder for NLP-based client name extraction."""
+        # In a real implementation this could call an NLP service.
+        return None
 
 class BedrockAgentInvoker:
     """Handles Bedrock Agent invocation and response processing"""
