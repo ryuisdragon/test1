@@ -60,11 +60,11 @@ class DatabaseManager:
                 parameters=parameters
             )
             
-            log.info(f"Case {case_id} status updated to {status}")
+            logger.info(f"Case {case_id} status updated to {status}")
             return True
             
         except ClientError as e:
-            log.error(f"Database update failed: {str(e)}")
+            logger.error(f"Database update failed: {str(e)}")
             return False
     
     def get_case_data(self, case_id: str) -> Optional[Dict[str, Any]]:
@@ -113,7 +113,7 @@ class DatabaseManager:
             return None
             
         except ClientError as e:
-            log.error(f"Database query failed: {str(e)}")
+            logger.error(f"Database query failed: {str(e)}")
             return None
     
     def save_case_data(self, case_data: Dict[str, Any]) -> bool:
@@ -155,11 +155,11 @@ class DatabaseManager:
                 parameters=parameters
             )
             
-            log.info(f"Case {case_data['case_id']} data saved successfully")
+            logger.info(f"Case {case_data['case_id']} data saved successfully")
             return True
             
         except ClientError as e:
-            log.error(f"Database save failed: {str(e)}")
+            logger.error(f"Database save failed: {str(e)}")
             return False
 
 class SlackInteractionHandler:
@@ -200,11 +200,11 @@ class SlackInteractionHandler:
             
             # TODO: Implement Slack API call to open modal
             # This would typically use the Slack Web API
-            log.info(f"Modal opened for case: {case_data['case_id']}")
+            logger.info(f"Modal opened for case: {case_data['case_id']}")
             return True
             
         except Exception as e:
-            log.error(f"Modal opening failed: {str(e)}")
+            logger.error(f"Modal opening failed: {str(e)}")
             return False
     
     def _build_modal_blocks(self, case_data: Dict[str, Any]) -> list:
@@ -289,11 +289,11 @@ class SlackInteractionHandler:
             }
             
             # TODO: Implement Slack API call to send message
-            log.info(f"Confirmation message sent for action: {action}")
+            logger.info(f"Confirmation message sent for action: {action}")
             return True
             
         except Exception as e:
-            log.error(f"Confirmation message failed: {str(e)}")
+            logger.error(f"Confirmation message failed: {str(e)}")
             return False
 
 class BriefGenerator:
@@ -332,7 +332,7 @@ class BriefGenerator:
             }
             
         except Exception as e:
-            log.error(f"Planner brief generation failed: {str(e)}")
+            logger.error(f"Planner brief generation failed: {str(e)}")
             raise
     
     def generate_manager_brief(self, case_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -364,7 +364,7 @@ class BriefGenerator:
             }
             
         except Exception as e:
-            log.error(f"Manager brief generation failed: {str(e)}")
+            logger.error(f"Manager brief generation failed: {str(e)}")
             raise
     
     def _extract_actionable_fields(self, case_data: Dict[str, Any]) -> list:
@@ -451,11 +451,11 @@ class PDFGenerator:
             # Placeholder for PDF generation
             pdf_url = f"https://{self.s3_bucket}.s3.amazonaws.com/{s3_key}"
             
-            log.info(f"PDF generated: {pdf_url}")
+            logger.info(f"PDF generated: {pdf_url}")
             return pdf_url
             
         except Exception as e:
-            log.error(f"PDF generation failed: {str(e)}")
+            logger.error(f"PDF generation failed: {str(e)}")
             raise
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
