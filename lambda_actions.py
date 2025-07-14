@@ -20,11 +20,12 @@ rds_client = boto3.client('rds-data')
 
 class DatabaseManager:
     """Handles RDS database operations for case management"""
-    
-    def __init__(self, cluster_arn: str, secret_arn: str, database_name: str):
+
+    def __init__(self, cluster_arn: str, secret_arn: str, database_name: str, logger: logging.LoggerAdapter):
         self.cluster_arn = cluster_arn
         self.secret_arn = secret_arn
         self.database_name = database_name
+        self.logger = logger
     
     def update_case_status(self, case_id: str, status: str, user_id: str) -> bool:
         """
@@ -61,11 +62,11 @@ class DatabaseManager:
                 parameters=parameters
             )
             
-            log.info(f"Case {case_id} status updated to {status}")
+            self.logger.info(f"Case {case_id} status updated to {status}")
             return True
             
         except ClientError as e:
-            log.error(f"Database update failed: {str(e)}")
+            self.logger.error(f"Database update failed: {str(e)}")
             return False
     
     def get_case_data(self, case_id: str) -> Optional[Dict[str, Any]]:
@@ -114,7 +115,7 @@ class DatabaseManager:
             return None
             
         except ClientError as e:
-            log.error(f"Database query failed: {str(e)}")
+            self.logger.error(f"Database query failed: {str(e)}")
             return None
     
     def save_case_data(self, case_data: Dict[str, Any]) -> bool:
@@ -156,18 +157,19 @@ class DatabaseManager:
                 parameters=parameters
             )
             
-            log.info(f"Case {case_data['case_id']} data saved successfully")
+            self.logger.info(f"Case {case_data['case_id']} data saved successfully")
             return True
             
         except ClientError as e:
-            log.error(f"Database save failed: {str(e)}")
+            self.logger.error(f"Database save failed: {str(e)}")
             return False
 
 class SlackInteractionHandler:
     """Handles Slack interactions and modal responses"""
-    
-    def __init__(self, bot_token: str):
+
+    def __init__(self, bot_token: str, logger: logging.LoggerAdapter):
         self.bot_token = bot_token
+        self.logger = logger
     
     def open_adjust_conditions_modal(self, trigger_id: str, case_data: Dict[str, Any]) -> bool:
         """
@@ -201,11 +203,11 @@ class SlackInteractionHandler:
             
             # TODO: Implement Slack API call to open modal
             # This would typically use the Slack Web API
-            log.info(f"Modal opened for case: {case_data['case_id']}")
+            self.logger.info(f"Modal opened for case: {case_data['case_id']}")
             return True
             
         except Exception as e:
-            log.error(f"Modal opening failed: {str(e)}")
+            self.logger.error(f"Modal opening failed: {str(e)}")
             return False
     
     def _build_modal_blocks(self, case_data: Dict[str, Any]) -> list:
@@ -290,18 +292,19 @@ class SlackInteractionHandler:
             }
             
             # TODO: Implement Slack API call to send message
-            log.info(f"Confirmation message sent for action: {action}")
+            self.logger.info(f"Confirmation message sent for action: {action}")
             return True
-            
+
         except Exception as e:
-            log.error(f"Confirmation message failed: {str(e)}")
+            self.logger.error(f"Confirmation message failed: {str(e)}")
             return False
 
 class BriefGenerator:
     """Handles brief generation for different audiences"""
-    
-    def __init__(self, s3_bucket: str):
+
+    def __init__(self, s3_bucket: str, logger: logging.LoggerAdapter):
         self.s3_bucket = s3_bucket
+        self.logger = logger
     
     def generate_planner_brief(self, case_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -333,7 +336,7 @@ class BriefGenerator:
             }
             
         except Exception as e:
-            log.error(f"Planner brief generation failed: {str(e)}")
+            self.logger.error(f"Planner brief generation failed: {str(e)}")
             raise
     
     def generate_manager_brief(self, case_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -365,7 +368,7 @@ class BriefGenerator:
             }
             
         except Exception as e:
-            log.error(f"Manager brief generation failed: {str(e)}")
+            self.logger.error(f"Manager brief generation failed: {str(e)}")
             raise
     
     def _extract_actionable_fields(self, case_data: Dict[str, Any]) -> list:
@@ -422,9 +425,10 @@ class BriefGenerator:
 
 class PDFGenerator:
     """Handles PDF generation from brief content"""
-    
-    def __init__(self, s3_bucket: str):
+
+    def __init__(self, s3_bucket: str, logger: logging.LoggerAdapter):
         self.s3_bucket = s3_bucket
+        self.logger = logger
     
     def generate_pdf(self, brief_content: Dict[str, Any], template_name: str) -> str:
         """
@@ -451,12 +455,12 @@ class PDFGenerator:
             
             # Placeholder for PDF generation
             pdf_url = f"https://{self.s3_bucket}.s3.amazonaws.com/{s3_key}"
-            
-            log.info(f"PDF generated: {pdf_url}")
+
+            self.logger.info(f"PDF generated: {pdf_url}")
             return pdf_url
-            
+
         except Exception as e:
-            log.error(f"PDF generation failed: {str(e)}")
+            self.logger.error(f"PDF generation failed: {str(e)}")
             raise
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -482,11 +486,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         db_manager = DatabaseManager(
             os.environ['RDS_CLUSTER_ARN'],
             os.environ['RDS_SECRET_ARN'],
-            os.environ['RDS_DATABASE_NAME']
+            os.environ['RDS_DATABASE_NAME'],
+            log
         )
-        slack_handler = SlackInteractionHandler(os.environ['SLACK_BOT_TOKEN'])
-        brief_generator = BriefGenerator(os.environ['S3_BUCKET_NAME'])
-        pdf_generator = PDFGenerator(os.environ['S3_BUCKET_NAME'])
+        slack_handler = SlackInteractionHandler(os.environ['SLACK_BOT_TOKEN'], log)
+        brief_generator = BriefGenerator(os.environ['S3_BUCKET_NAME'], log)
+        pdf_generator = PDFGenerator(os.environ['S3_BUCKET_NAME'], log)
         
         # Parse Slack interaction
         body = json.loads(event.get('body', '{}'))
